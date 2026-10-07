@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nuclear Notes · Active Recall</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101419;
+      --panel: #181f26;
+      --panel-soft: #202932;
+      --line: #303b46;
+      --text: #e8eef4;
+      --muted: #9baab8;
+      --accent: #69d2b0;
+      --accent-strong: #2ba982;
+      --danger: #ff8b8b;
+      --warning: #f3c977;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); }
+    button, input, textarea, select { font: inherit; }
+    button { cursor: pointer; }
+    .shell { max-width: 1440px; margin: 0 auto; padding: 28px; }
+    header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; margin-bottom: 22px; }
+    h1 { margin: 0; font-size: clamp(1.5rem, 3vw, 2.15rem); letter-spacing: -.04em; }
+    header p, .subtle { color: var(--muted); }
+    header p { margin: 8px 0 0; }
+    .layout { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 20px; align-items: start; }
+    .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 20px; }
+    .panel h2 { margin: 0 0 16px; font-size: 1.08rem; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .field { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+    .field.full { grid-column: 1 / -1; }
+    label { color: #c7d2dc; font-size: .88rem; font-weight: 650; }
+    input, textarea, select {
+      width: 100%; color: var(--text); background: #11171c; border: 1px solid var(--line);
+      border-radius: 8px; padding: 11px 12px; outline: none;
+    }
+    input:focus, textarea:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px #69d2b01f; }
+    textarea { min-height: 112px; resize: vertical; line-height: 1.5; }
+    .stem { min-height: 96px; }
+    .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+    .btn { border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; background: var(--panel-soft); color: var(--text); font-weight: 700; }
+    .btn:hover { filter: brightness(1.13); }
+    .btn.primary { background: var(--accent-strong); border-color: var(--accent-strong); color: #07140f; }
+    .btn.approve { background: var(--accent); border-color: var(--accent); color: #07140f; }
+    .btn:disabled { cursor: not-allowed; opacity: .48; }
+    .message { min-height: 22px; margin: 12px 0 0; color: var(--muted); font-size: .9rem; }
+    .message.error { color: var(--danger); }
+    .message.success { color: var(--accent); }
+    .preview { margin-top: 20px; }
+    pre { white-space: pre-wrap; overflow-wrap: anywhere; background: #0d1216; border: 1px solid var(--line); border-radius: 9px; padding: 16px; min-height: 130px; color: #d2e5dc; line-height: 1.55; font: .9rem/1.55 ui-monospace, SFMono-Regular, Consolas, monospace; }
+    .sidebar { display: grid; gap: 20px; }
+    .search-result, .draft-item { border: 1px solid var(--line); border-radius: 9px; background: #131a20; padding: 11px; margin-top: 9px; }
+    .search-result strong { color: var(--accent); }
+    .search-result p { margin: 7px 0; line-height: 1.45; }
+    .search-result small, .draft-item small { color: var(--muted); }
+    .draft-item { width: 100%; text-align: left; color: var(--text); }
+    .draft-item:hover { border-color: #607382; }
+    .status { display: inline-block; padding: 3px 7px; margin-left: 5px; border-radius: 99px; background: #2a343d; color: var(--warning); font-size: .72rem; }
+    .status.published { color: var(--accent); }
+    .empty { color: var(--muted); font-size: .9rem; }
+    .hint { color: var(--muted); font-size: .82rem; margin: 2px 0 0; }
+    @media (max-width: 920px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 620px) {
+      .shell { padding: 16px; }
+      .form-grid, .sidebar { grid-template-columns: 1fr; }
+      .field.full { grid-column: auto; }
+      .panel { padding: 16px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div>
+        <h1>Nuclear Notes <span class="subtle">/ Active Recall</span></h1>
+        <p>Capture mistakes, review the note, then approve it for your print-ready capsule.</p>
+      </div>
+      <span class="subtle">Local study dashboard</span>
+    </header>
+
+    <div class="layout">
+      <section class="panel" aria-labelledby="editor-title">
+        <h2 id="editor-title">New study note</h2>
+        <form id="draft-form">
+          <div class="form-grid">
+            <div class="field">
+              <label for="subject">Subject</label>
+              <select id="subject" name="subject" required>
+                <option value="General Medicine">General Medicine</option>
+                <option value="Surgery">Surgery</option>
+                <option value="Pediatrics">Pediatrics</option>
+                <option value="OBGYN">OBGYN</option>
+                <option value="Pathology">Pathology</option>
+                <option value="Pharmacology">Pharmacology</option>
+                <option value="Microbiology">Microbiology</option>
+                <option value="Biochemistry">Biochemistry</option>
+                <option value="Physiology">Physiology</option>
+                <option value="Anatomy">Anatomy</option>
+                <option value="Orthopedics">Orthopedics</option>
+                <option value="Anesthesia">Anesthesia</option>
+                <option value="Radiology">Radiology</option>
+                <option value="Dermatology">Dermatology</option>
+                <option value="Psychiatry">Psychiatry</option>
+                <option value="Ophthalmology">Ophthalmology</option>
+                <option value="ENT">ENT</option>
+                <option value="PSM">PSM (Preventive &amp; Social Medicine)</option>
+                <option value="Forensic Medicine">Forensic Medicine</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="topic">Topic / disease</label>
+              <input id="topic" name="topic" placeholder="e.g. Ulnar nerve" required maxlength="200">
+            </div>
+            <div class="field full">
+              <label for="clinical-stem">Clinical stem / question</label>
+              <textarea class="stem" id="clinical-stem" name="clinical_stem" placeholder="Add a short prompt or your own reminder from the test" required></textarea>
+            </div>
+            <div class="field full">
+              <label for="core-concept">Core concept / trap</label>
+              <textarea id="core-concept" name="core_concept" placeholder="What did you miss? Write the key fact, reasoning, or common trap." required></textarea>
+            </div>
+            <div class="field">
+              <label for="confidence">Confidence</label>
+              <select id="confidence" name="confidence" required>
+                <option value="Low">Low</option><option value="Med" selected>Med</option><option value="High">High</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="frequency">Frequency tag</label>
+              <select id="frequency" name="frequency" required>
+                <option>Not sure</option><option>Frequently asked</option><option>Seen in PYQs</option><option>Occasional</option>
+              </select>
+            </div>
+            <div class="field full">
+              <label for="source">Test / source (optional)</label>
+              <input id="source" name="source" placeholder="e.g. Doctutorial GT 4, 7 Oct">
+            </div>
+          </div>
+          <div class="actions">
+            <button class="btn primary" type="submit" id="save-button">Save draft</button>
+            <button class="btn approve" type="button" id="publish-button" disabled>Approve &amp; Publish</button>
+            <button class="btn" type="button" id="new-button">New note</button>
+          </div>
+          <p class="message" id="form-message" role="status" aria-live="polite"></p>
+        </form>
+        <section class="preview" aria-labelledby="preview-title">
+          <h2 id="preview-title">Markdown preview</h2>
+          <pre id="preview-content"></pre>
+          <p class="hint">Only the saved draft shown here can be published. Publishing adds it to a subject-wise file in <code>capsule/</code>.</p>
+        </section>
+      </section>
+
+      <aside class="sidebar">
+        <section class="panel" aria-labelledby="search-title">
+          <h2 id="search-title">Search question bank</h2>
+          <div class="field">
+            <label for="search-query">Topic, question, or keyword</label>
+            <input id="search-query" type="search" placeholder="Type at least 2 characters">
+          </div>
+          <div id="search-results" aria-live="polite"><p class="empty">Search local question_bank.csv for related questions.</p></div>
+        </section>
+        <section class="panel" aria-labelledby="drafts-title">
+          <h2 id="drafts-title">Your notes</h2>
+          <div id="draft-list"><p class="empty">Loading saved notes…</p></div>
+        </section>
+      </aside>
+    </div>
+  </main>
+  <script>
+    const form = document.querySelector("#draft-form");
+    const message = document.querySelector("#form-message");
+    const preview = document.querySelector("#preview-content");
+    const publishButton = document.querySelector("#publish-button");
+    const searchQuery = document.querySelector("#search-query");
+    const searchResults = document.querySelector("#search-results");
+    let currentDraftId = null;
+    let savedData = null;
+    let searchTimer = null;
+
+    function formData() {
+      return Object.fromEntries(new FormData(form).entries());
+    }
+
+    function markdown(data, id = "draft") {
+      const quote = (text) => (text || "").split("\n").map((line) => line ? `> ${line}` : ">").join("\n");
+      return `<!-- nuclear-note-id:${id} -->\n### ${data.topic || "Topic"}\n\n` +
+        `**Clinical stem / question**\n\n${quote(data.clinical_stem)}\n\n` +
+        `**Core concept / trap**\n\n${quote(data.core_concept)}\n\n` +
+        `- **Confidence:** ${data.confidence || "Med"}\n- **Frequency:** ${data.frequency || "Not sure"}\n` +
+        (data.source ? `- **Source:** ${data.source}\n` : "");
+    }
+
+    function updatePreview() {
+      preview.textContent = markdown(formData(), currentDraftId || "draft");
+      publishButton.disabled = !currentDraftId || JSON.stringify(formData()) !== JSON.stringify(savedData);
+    }
+
+    function showMessage(text, kind = "") {
+      message.textContent = text;
+      message.className = `message ${kind}`;
+    }
+
+    async function requestJson(url, options = {}) {
+      const response = await fetch(url, {
+        headers: { "Content-Type": "application/json", ...(options.headers || {}) },
+        ...options,
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || `Request failed (${response.status}).`);
+      return data;
+    }
+
+    async function loadDrafts() {
+      const list = document.querySelector("#draft-list");
+      try {
+        const drafts = await requestJson("/api/drafts");
+        list.replaceChildren();
+        if (!drafts.length) {
+          list.innerHTML = '<p class="empty">No notes yet. Save your first draft above.</p>';
+          return;
+        }
+        for (const draft of drafts) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.className = "draft-item";
+          button.disabled = draft.status === "Published";
+          const title = document.createElement("strong");
+          title.textContent = `${draft.topic} · ${draft.subject}`;
+          const status = document.createElement("span");
+          status.className = `status ${draft.status === "Published" ? "published" : ""}`;
+          status.textContent = draft.status;
+          const detail = document.createElement("small");
+          detail.textContent = draft.updated_at ? new Date(draft.updated_at).toLocaleString() : "";
+          button.append(title, status, document.createElement("br"), detail);
+          if (draft.status === "Draft") button.addEventListener("click", () => openDraft(draft.id));
+          list.append(button);
+        }
+      } catch (error) {
+        list.textContent = "";
+        const errorText = document.createElement("p");
+        errorText.className = "message error";
+        errorText.textContent = error.message;
+        list.append(errorText);
+      }
+    }
+
+    async function openDraft(id) {
+      try {
+        const draft = await requestJson(`/api/drafts/${encodeURIComponent(id)}`);
+        for (const [key, value] of Object.entries(draft)) {
+          const control = form.elements.namedItem(key);
+          if (control) control.value = value;
+        }
+        currentDraftId = draft.id;
+        savedData = formData();
+        updatePreview();
+        showMessage("Draft loaded. Save changes before publishing.", "success");
+      } catch (error) {
+        showMessage(error.message, "error");
+      }
+    }
+
+    form.addEventListener("input", updatePreview);
+    form.addEventListener("change", updatePreview);
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!form.reportValidity()) return;
+      const payload = formData();
+      if (currentDraftId) payload.id = currentDraftId;
+      try {
+        const draft = await requestJson("/api/drafts", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+        currentDraftId = draft.id;
+        savedData = formData();
+        updatePreview();
+        showMessage("Draft saved locally. Review the preview before approving.", "success");
+        await loadDrafts();
+      } catch (error) {
+        showMessage(error.message, "error");
+      }
+    });
+
+    publishButton.addEventListener("click", async () => {
+      if (!currentDraftId || JSON.stringify(formData()) !== JSON.stringify(savedData)) {
+        showMessage("Save your latest edits before approving this note.", "error");
+        return;
+      }
+      if (!window.confirm("Approve this note and add it to the subject-wise capsule Markdown file?")) return;
+      publishButton.disabled = true;
+      try {
+        await requestJson(`/api/drafts/${encodeURIComponent(currentDraftId)}/publish`, { method: "POST" });
+        showMessage("Approved and published to capsule/. The published note remains in your list.", "success");
+        currentDraftId = null;
+        savedData = null;
+        await loadDrafts();
+        updatePreview();
+      } catch (error) {
+        showMessage(error.message, "error");
+        publishButton.disabled = false;
+      }
+    });
+
+    document.querySelector("#new-button").addEventListener("click", () => {
+      const currentData = formData();
+      const hasUnsavedContent = ["subject", "topic", "clinical_stem", "core_concept", "source"]
+        .some((key) => currentData[key]);
+      const isDirty = hasUnsavedContent && JSON.stringify(currentData) !== JSON.stringify(savedData);
+      if (isDirty && !window.confirm("Start a new note? Unsaved edits will be discarded.")) return;
+      form.reset();
+      currentDraftId = null;
+      savedData = null;
+      updatePreview();
+      showMessage("");
+    });
+
+    function renderSearchResults(results) {
+      searchResults.replaceChildren();
+      if (!results.length) {
+        const empty = document.createElement("p");
+        empty.className = "empty";
+        empty.textContent = "No matching questions found.";
+        searchResults.append(empty);
+        return;
+      }
+      for (const result of results) {
+        const card = document.createElement("article");
+        card.className = "search-result";
+        const heading = document.createElement("strong");
+        heading.textContent = [result.subject, result.topic].filter(Boolean).join(" · ") || "Question bank match";
+        const question = document.createElement("p");
+        question.textContent = result.question || "(No question text in this row)";
+        const source = document.createElement("small");
+        source.textContent = [result.exam, result.year, result.session, result.source_file, result.source_location].filter(Boolean).join(" · ");
+        card.append(heading, question, source);
+        if (result.answer_text) {
+          const answer = document.createElement("p");
+          answer.textContent = `Answer in bank: ${result.answer_text}${result.review_status ? ` · ${result.review_status}` : ""}`;
+          card.append(answer);
+        }
+        const useButton = document.createElement("button");
+        useButton.type = "button";
+        useButton.className = "btn";
+        useButton.textContent = "Use in note & preview";
+        useButton.addEventListener("click", () => useSearchResult(result));
+        card.append(useButton);
+        searchResults.append(card);
+      }
+    }
+
+    function useSearchResult(result) {
+      const currentData = formData();
+      const hasContent = ["topic", "clinical_stem", "core_concept", "source"]
+        .some((key) => currentData[key]);
+      if ((hasContent || currentDraftId) &&
+          !window.confirm("Start a new note from this search result? Unsaved edits will be discarded; saved drafts remain unchanged.")) {
+        return;
+      }
+
+      const subject = form.elements.namedItem("subject");
+      const matchingOption = [...subject.options].find((option) => option.value === result.subject);
+      if (result.subject && !matchingOption) {
+        const option = document.createElement("option");
+        option.value = result.subject;
+        option.textContent = result.subject;
+        subject.append(option);
+      }
+      if (result.subject) subject.value = result.subject;
+      form.elements.namedItem("topic").value = result.topic || result.question || "";
+      form.elements.namedItem("clinical_stem").value = result.question || "";
+      if (result.answer_text) form.elements.namedItem("core_concept").value = result.answer_text;
+      form.elements.namedItem("source").value =
+        [result.exam, result.year, result.session, result.source_file, result.source_location]
+          .filter(Boolean).join(" · ");
+
+      currentDraftId = null;
+      savedData = null;
+      updatePreview();
+      showMessage("Search result added to a new note. Review the Markdown preview and save it.", "success");
+    }
+
+    searchQuery.addEventListener("input", () => {
+      clearTimeout(searchTimer);
+      const query = searchQuery.value.trim();
+      if (query.length < 2) {
+        searchResults.innerHTML = '<p class="empty">Type at least 2 characters to search.</p>';
+        return;
+      }
+      searchTimer = setTimeout(async () => {
+        searchResults.textContent = "Searching…";
+        try {
+          const data = await requestJson(`/api/search?q=${encodeURIComponent(query)}`);
+          renderSearchResults(data.results);
+        } catch (error) {
+          searchResults.textContent = "";
+          const errorText = document.createElement("p");
+          errorText.className = "message error";
+          errorText.textContent = error.message;
+          searchResults.append(errorText);
+        }
+      }, 220);
+    });
+
+    updatePreview();
+    loadDrafts();
+  </script>
+</body>
+</html>
