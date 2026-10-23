@@ -21,7 +21,7 @@ A lightweight local dashboard for recording exam mistakes, searching the local q
 
 The app stores unapproved notes in `drafts.json`. After saving and reviewing a draft, choose **Approve & Publish** to add it to `capsule/<subject>.md`. Existing capsule notes are preserved.
 
-The question bank search checks `question_bank.csv` in the project root and then the repository's existing `Refinary /question_bank.csv`. Use **Use in note & preview** on a search result to copy its question, answer, and source into a new note and show them in the Markdown preview. To use a different local CSV, set `QUESTION_BANK_CSV` before starting the app.
+The question bank search checks `question_bank.csv` in the project root and then the repository's existing `Refinary /question_bank.csv`. In the combined question bank, `topic` is the broad chapter/subject label; it is not a detailed concept-level tag. Use **Use in note & preview** on a search result to copy its question, answer, and source into a new note and show them in the Markdown preview. To use a different local CSV, set `QUESTION_BANK_CSV` before starting the app.
 
 Drafts can be saved through `/api/drafts` using the dashboard field names or through `/api/draft` using the `stem` and `concept` aliases. If omitted, the frequency defaults to `Not sure`.
 
